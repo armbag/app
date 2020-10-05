@@ -1,0 +1,46 @@
+{
+	"name": "CAR",
+	"components": [
+		{
+			"id": "ch001",
+			"name": "Wheel",
+			"components": [
+				{
+					"id": "pn001",
+					"name": "Tyre",
+					"variants": [
+						{
+							"id": "pn004",
+							"name": "Tyre 24 inches"
+						}
+					]
+				},
+				{
+					"id": "ja000",
+					"name": "Rim",
+					"variants": [
+						{
+							"id": "ja002",
+							"name": "Alu Rim"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "an001",
+			"name": "antenna",
+			"option": true,
+			"variants": [
+				{
+					"id": "an002",
+					"name": "classic antenna"
+				}
+			]
+		},
+		{
+			"id": "tou001",
+			"name": "SunRoof"
+		}
+	]
+}

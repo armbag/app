@@ -1,0 +1,74 @@
+{
+	"name": "CAR",
+	"rules": [
+		"NOT ([an003] AND [tou001])"
+	],
+	"components": [
+		{
+			"id": "ch001",
+			"name": "Wheel",
+			"rules": [
+				"([ja001] AND ([pn003] OR [pn004] OR [pn002]))",
+				"([ja002] AND ([pn002] OR [pn005]))"
+			],
+			"components": [
+				{
+					"id": "pn001",
+					"name": "Tyre",
+					"variants": [
+						{
+							"id": "pn005",
+							"name": "Tyre 18 inches"
+						},
+						{
+							"id": "pn002",
+							"name": "Tyre 20 inches"
+						},
+						{
+							"id": "pn003",
+							"name": "Tyre 22 inches"
+						},
+						{
+							"id": "pn004",
+							"name": "Tyre 24 inches"
+						}
+					]
+				},
+				{
+					"id": "ja000",
+					"name": "Rim",
+					"variants": [
+						{
+							"id": "ja001",
+							"name": "Steel Rim"
+						},
+						{
+							"id": "ja002",
+							"name": "Alu Rim"
+						}
+					]
+				}
+			]
+		},
+		{
+			"id": "an001",
+			"name": "antenna",
+			"option": true,
+			"variants": [
+				{
+					"id": "an002",
+					"name": "classic antenna"
+				},
+				{
+					"id": "an003",
+					"name": "roof antenna"
+				}
+			]
+		},
+		{
+			"id": "tou001",
+			"name": "SunRoof",
+			"option": true
+		}
+	]
+}
