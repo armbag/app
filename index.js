@@ -1,34 +1,47 @@
 const fs = require('fs')
 const express = require('express')
+const bodyParser = require('body-parser')
+const neo4j = require('neo4j-driver')
+
 const app = express()
 
-// app.get('/', (req, res) => {
-// 	res.send('HOMEPAGE')
-// })
+app.use(bodyParser.json())
+
+app.use(function (req, res, next) {
+	res.header('Access-Control-Allow-Origin', 'http://localhost:8080')
+	res.header(
+		'Access-Control-Allow-Headers',
+		'Origin, X-Requested-With, Content-Type, Accept'
+	)
+	next()
+})
 
 app.use('/getOptions', (req, res) => {
-	// TODO : GetOptions endpoint
-	// ■ It doesn’t take inputs
-	// ■ It reads the content of the json file
-	// ■ It returns all the available options grouped
-	// Example is availableOptions.json
-
-	console.log('\n *STARTING* \n')
-	// Get content from file
 	const raw = fs.readFileSync('availableOptions.json')
 	const dataOptions = JSON.parse(raw)
 	res.send(dataOptions)
-	// TODO dataOptions are all the options available, now we need to send it to the client
 })
 
 app.post('/GetConfiguredBOM', (req, res) => {
-	// TODO : GetConfiguredBOM
-	//   ● It takes as an input a list of part numbers
-	// Ex: [“pn004”,”tou001”]
-	// ● It returns a json similar to the sample but with forbidden elements filtered.
-	// If you provide [“pn004”,”tou001”] as an input, it should return the file
-	// resolvedSample.json
-	res.send('GetConfiguredBOM')
+	// console.log(req.body)
+	const rawRules = fs.readFileSync('sampleBOM.json')
+	const sampleBOM = JSON.parse(rawRules)
+	// TODO :
+	// 1 look into the DB to send back only the remaining possibilities
+	// 2 interrogate the DB if it breaks any rules
+	if (sampleBOM.rules) {
+		sampleBOM.rules.forEach((r) => console.log(r))
+		// TODO Does it pass the rules ?
+		// checkIfOk()
+		if (sampleBOM.components) {
+			sampleBOM.components.forEach((component) => {
+				if (component.rules) {
+					component.rules.forEach((r) => console.log(r))
+				}
+			})
+		}
+	}
+	res.send({ receivedValue: [...req.body] })
 })
 
 const port = 3000
