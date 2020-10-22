@@ -1,8 +1,6 @@
 {
 	"name": "CAR",
-	"rules": [
-		"NOT ([an003] AND [tou001])"
-	],
+	"rules": ["NOT ([an003] AND [tou001])"],
 	"components": [
 		{
 			"id": "ch001",
