@@ -5,7 +5,7 @@
 			type="checkbox"
 			v-if="option.name"
 			:id="option.id"
-			:checked="option.id === isUnique"
+			:checked="option.id === lastId"
 			:disabled="checkIfDisable(option.id)"
 			@click="sendInputs(option.id)"
 		/>
@@ -19,7 +19,7 @@
 					<input
 						type="checkbox"
 						:id="o.id"
-						:checked="o.id === isUnique"
+						:checked="o.id === lastId"
 						@click="sendInputs(o.id)"
 						:disabled="checkIfDisable(o.id)"
 					/>
@@ -43,7 +43,7 @@
 			const options = ref([])
 			const checkedItems = ref([])
 			const idsToDesactivate = ref([])
-			const isUnique = ref([])
+			const lastId = ref([])
 
 			async function fetchOptions() {
 				const endpoint = 'http://localhost:3000/getOptions'
@@ -52,7 +52,6 @@
 						'Content-Type': 'application/json',
 					},
 				}).then((raw) => raw.json())
-				options.value.forEach((o) => console.log(o))
 			}
 
 			onMounted(() => {
@@ -75,25 +74,19 @@
 				})
 					.then((raw) => raw.json())
 					.then((data) => {
-						console.log(data.elementsToDesactivate)
-						console.log(data.isUnique)
-						idsToDesactivate.value = data.elementsToDesactivate
-						isUnique.value = data.isUnique
+						idsToDesactivate.value = data.toCancelIds
+						lastId.value = data.lastId
 					})
-				console.log(checkedItems.value)
 			}
 
-			function checkIfDisable(id) {
-				const res = idsToDesactivate.value.includes(id)
-				return res
-			}
+			const checkIfDisable = (id) => idsToDesactivate.value.includes(id)
 
 			return {
 				options,
 				sendInputs,
 				idsToDesactivate,
 				checkIfDisable,
-				isUnique,
+				lastId,
 			}
 		},
 	}

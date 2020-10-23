@@ -15,6 +15,6 @@
     "esprima": "^4.0.1",
     "express": "^4.17.1",
     "neo4j-driver": "^4.1.2",
-    "nodemon": "^2.0.4"
+    "nodemon": "^2.0.6"
   }
 }
