@@ -5,10 +5,11 @@
 			type="checkbox"
 			v-if="option.name"
 			:id="option.id"
-			v-model="checked"
+			:checked="option.id === isUnique"
+			:disabled="checkIfDisable(option.id)"
 			@click="sendInputs(option.id)"
 		/>
-		<label :for="option.id"
+		<label :for="option.id" :class="checkIfDisable(option.id) ? 'off' : ''"
 			>{{ option.name || Object.keys(option)[0] }}
 			{{ option.name ? `(${option.id})` : '' }}</label
 		>
@@ -18,10 +19,13 @@
 					<input
 						type="checkbox"
 						:id="o.id"
+						:checked="o.id === isUnique"
 						@click="sendInputs(o.id)"
-						v-model="checked"
+						:disabled="checkIfDisable(o.id)"
 					/>
-					<label :for="o.id">{{ o.name }} ({{ o.id }})</label>
+					<label :for="o.id" :class="checkIfDisable(o.id) ? 'off' : ''"
+						>{{ o.name }} ({{ o.id }})</label
+					>
 				</div>
 			</ul>
 		</div>
@@ -36,10 +40,10 @@
 
 	export default {
 		setup() {
-			const newToDo = ref('')
-			const toDos = ref([])
 			const options = ref([])
 			const checkedItems = ref([])
+			const idsToDesactivate = ref([])
+			const isUnique = ref([])
 
 			async function fetchOptions() {
 				const endpoint = 'http://localhost:3000/getOptions'
@@ -48,6 +52,7 @@
 						'Content-Type': 'application/json',
 					},
 				}).then((raw) => raw.json())
+				options.value.forEach((o) => console.log(o))
 			}
 
 			onMounted(() => {
@@ -69,39 +74,26 @@
 					},
 				})
 					.then((raw) => raw.json())
-					.then((data) => console.log(data))
+					.then((data) => {
+						console.log(data.elementsToDesactivate)
+						console.log(data.isUnique)
+						idsToDesactivate.value = data.elementsToDesactivate
+						isUnique.value = data.isUnique
+					})
 				console.log(checkedItems.value)
 			}
 
-			function addNewToDo() {
-				toDos.value.push({
-					id: Date.now(),
-					done: false,
-					content: newToDo.value,
-				})
-				newToDo.value = ''
+			function checkIfDisable(id) {
+				const res = idsToDesactivate.value.includes(id)
+				return res
 			}
 
-			function toggleDone(toDo) {
-				toDo.done = !toDo.done
-			}
-
-			function removeToDo(index) {
-				toDos.value.splice(index, 1)
-			}
-
-			function markThemAll() {
-				toDos.value.map((toDo) => (toDo.done = true))
-			}
 			return {
-				toDos,
-				newToDo,
-				addNewToDo,
-				toggleDone,
-				removeToDo,
-				markThemAll,
 				options,
 				sendInputs,
+				idsToDesactivate,
+				checkIfDisable,
+				isUnique,
 			}
 		},
 	}
@@ -119,6 +111,14 @@
 	}
 
 	.notavailable {
+		text-decoration: line-through;
+	}
+
+	input[type='checkbox'][disabled] {
+		border: aqua;
+	}
+
+	.off {
 		text-decoration: line-through;
 	}
 

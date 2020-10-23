@@ -2,10 +2,11 @@ const fs = require('fs')
 const express = require('express')
 const bodyParser = require('body-parser')
 const neo4j = require('neo4j-driver')
-const esprima = require('esprima')
-const colors = require('colors')
 
 const app = express()
+
+const raw = fs.readFileSync('availableOptions.json')
+const optionsJson = JSON.parse(raw)
 
 function transformToJs(rules) {
 	let newStatement
@@ -19,13 +20,10 @@ function transformToJs(rules) {
 }
 
 function getAvailableOptions() {
-	const raw = fs.readFileSync('availableOptions.json')
-	const optionsJson = JSON.parse(raw)
-
-	const optionsArraySeparated = []
+	const optionsSeparated = []
 	optionsJson.forEach((o) => {
 		if (o.id) {
-			optionsArraySeparated.push(o.id)
+			optionsSeparated.push([o.id])
 		}
 		if (!o.id) {
 			for (const comp in o) {
@@ -35,13 +33,13 @@ function getAvailableOptions() {
 					elements.forEach((el) => {
 						elAr.push(el.id)
 					})
-					optionsArraySeparated.push(elAr)
+					optionsSeparated.push(elAr)
 				}
 			}
 		}
 	})
-	const notSeparated = optionsArraySeparated.flat()
-	return [optionsArraySeparated, notSeparated]
+	const notSeparated = optionsSeparated.flat()
+	return [optionsSeparated, notSeparated]
 }
 
 function getAllRules() {
@@ -52,16 +50,13 @@ function getAllRules() {
 	sampleBOM.rules?.forEach((rule) => {
 		allRules.push(transformToJs(rule))
 	})
-	sampleBOM.components?.forEach((comp) => {
-		comp.rules?.forEach((r) => {
-			allRules.push(transformToJs(r))
+	sampleBOM.components?.forEach((component) => {
+		component.rules?.forEach((nestedRule) => {
+			allRules.push(transformToJs(nestedRule))
 		})
 	})
 	return allRules
 }
-
-const allRules = getAllRules()
-const allOptions = getAvailableOptions()
 
 app.use(bodyParser.json())
 
@@ -75,24 +70,19 @@ app.use(function (req, res, next) {
 })
 
 app.use('/getOptions', (req, res) => {
-	const raw = fs.readFileSync('availableOptions.json')
-	const dataOptions = JSON.parse(raw)
-
-	res.send(dataOptions)
+	res.send(optionsJson)
 })
 
 app.post('/GetConfiguredBOM', (req, res) => {
 	const ids = req.body
-
-	const [separated, notSeparated] = allOptions
-	// console.log(separated)
-	// console.log(notSeparated)
+	const [separated, notSeparated] = getAvailableOptions()
+	const allRules = getAllRules()
 
 	const elementsToCancel = []
 	// 1 Getting rid of the other variants
 	ids.forEach((id) => {
 		separated.forEach((nestedArray) => {
-			if (nestedArray.includes(id) && typeof nestedArray !== 'string') {
+			if (nestedArray.includes(id)) {
 				nestedArray.forEach((el) => {
 					if (id !== el) return elementsToCancel.push(el)
 				})
@@ -100,6 +90,8 @@ app.post('/GetConfiguredBOM', (req, res) => {
 		})
 	})
 
+	// 2 getting the concerned rules, which means the rules
+	// that include any of the ids sent from Vue
 	const concernedRules = []
 	allRules.forEach((rule) => {
 		ids.forEach((id) => {
@@ -108,35 +100,59 @@ app.post('/GetConfiguredBOM', (req, res) => {
 			}
 		})
 	})
-	let restOptions = notSeparated.filter((el) => !elementsToCancel.includes(el))
-	restOptions = restOptions.filter((el) => !ids.includes(el))
 
+	// 3 we calculate all the remaining options after we eliminated the other variants
+	// so we remove from all options :
+	// the one sent by Vue (ids) + the other variants (elementsToCancel)
+	const restOptions = notSeparated.filter(
+		(el) => !elementsToCancel.includes(el) && !ids.includes(el)
+	)
+
+	// 4 for each rule that we change a bit to be able to eval()
+	// for each remaining options, if it's included in the rule
+	// we eval() it to see if it passes the rule or not
+	const rightIdsForVariant = []
 	concernedRules.forEach((rule) => {
-		// the variants have already been removed from restOptions
-		const idsInRuleConcerned = restOptions.filter((id) => rule.includes(id))
-		console.log('CHECKED from VueJS =>>>> %s\n', ids[0])
-		console.log('idsInRuleConcerned =>>>>> %s\n', idsInRuleConcerned)
-		console.log('RULE is ===>>>\n%s', rule)
-		idsInRuleConcerned.forEach((id) => {})
-	})
-
-	restOptions.forEach((id) => {
-		// i have to iterate over resOptions and ids and concerned rules !
-		console.log('iterated ID == ', id)
-		concernedRules.forEach((rule) => {})
-		if (concernedRules[0]?.includes(id)) {
-			if (eval(concernedRules[0])) {
-				console.log('%s is FINE', id)
-			} else {
-				console.log('%s is IMPOSSIBLE', id)
-				elementsToCancel.push(id)
+		restOptions.forEach((id) => {
+			if (rule.includes(id)) {
+				if (eval(rule)) {
+					// this will allow us to indirectly disable the other options
+					rightIdsForVariant.push(id)
+				} else {
+					elementsToCancel.push(id)
+				}
 			}
-		}
+		})
 	})
 
-	// Send back either the ones not possible (to desactivate)
-	// OR the ones still available (and desactivate the others from the front end)
-	res.send({ elementsToDesactivate: elementsToCancel })
+	// 5 we target the array of components if rightIdsForVariant isn't empty
+	let theOne = []
+	let isUnique
+	if (rightIdsForVariant.length) {
+		separated.forEach((sep) => {
+			const yesOrNo = sep.some((el) => rightIdsForVariant.includes(el))
+			if (yesOrNo) {
+				theOne = sep
+			}
+		})
+		if (rightIdsForVariant.length === 1) {
+			isUnique = rightIdsForVariant[0]
+		}
+	}
+	// then we filter that array to get only the ones that are not already in rightIdsForVariant
+	const indirectlyWrong = theOne.filter(
+		(obj) => rightIdsForVariant.indexOf(obj) == -1
+	)
+	console.log(isUnique)
+
+	// 6 we need to check if it's the last one
+	// is it an option or variant ?
+	// if variant then automatically check it
+
+	res.send({
+		elementsToDesactivate: [...elementsToCancel, ...indirectlyWrong],
+		isUnique,
+	})
 })
 
 const port = 3000
