@@ -10,7 +10,7 @@ const optionsJson = JSON.parse(raw)
 
 function transformToJs(rules) {
 	let newStatement
-	newStatement = rules.replace('NOT ', '!')
+	newStatement = rules.replace(/NOT/g, '!')
 	newStatement = newStatement.replace(/AND/g, '&&')
 	newStatement = newStatement.replace(/OR/g, '||')
 	newStatement = newStatement.replace(/\[/g, '"')
@@ -78,28 +78,38 @@ app.post('/GetConfiguredBOM', (req, res) => {
 	const [separated, notSeparated] = getAvailableOptions()
 	const allRules = getAllRules()
 
-	const elementsToCancel = []
 	// 1 Getting rid of the other variants
-	ids.forEach((id) => {
-		separated.forEach((nestedArray) => {
-			if (nestedArray.includes(id)) {
-				nestedArray.forEach((el) => {
-					if (id !== el) return elementsToCancel.push(el)
-				})
-			}
+	function getRidOfOtherVariants(ids, separatedArrays) {
+		const otherVariants = []
+		// 1 Getting rid of the other variants
+		ids.forEach((id) => {
+			separatedArrays.forEach((nestedArray) => {
+				if (nestedArray.includes(id)) {
+					nestedArray.forEach((el) => {
+						if (id !== el) return otherVariants.push(el)
+					})
+				}
+			})
 		})
-	})
+		return otherVariants
+	}
+	const elementsToCancel = getRidOfOtherVariants(ids, separated)
 
 	// 2 getting the concerned rules, which means the rules
 	// that include any of the ids sent from Vue
-	const concernedRules = []
-	allRules.forEach((rule) => {
-		ids.forEach((id) => {
-			if (rule.includes(id)) {
-				concernedRules.push(rule)
-			}
+	function getAllConcernedRules(rules, ids) {
+		const rulesContainingIds = []
+		rules.forEach((rule) => {
+			ids.forEach((id) => {
+				if (rule.includes(id)) {
+					rulesContainingIds.push(rule)
+				}
+			})
 		})
-	})
+		return rulesContainingIds
+	}
+
+	const concernedRules = getAllConcernedRules(allRules, ids)
 
 	// 3 we calculate all the remaining options after we eliminated the other variants
 	// so we remove from all options :
@@ -111,39 +121,60 @@ app.post('/GetConfiguredBOM', (req, res) => {
 	// 4 for each rule that we change a bit to be able to eval()
 	// for each remaining options, if it's included in the rule
 	// we eval() it to see if it passes the rule or not
-	const rightIdsForVariant = []
-	concernedRules.forEach((rule) => {
-		restOptions.forEach((id) => {
-			if (rule.includes(id)) {
-				if (eval(rule)) {
-					// this will allow us to indirectly disable the other options
-					rightIdsForVariant.push(id)
-				} else {
-					elementsToCancel.push(id)
+	function testingThroughRules(rules, options, idsToCancel) {
+		const rightIds = []
+		rules.forEach((rule) => {
+			options.forEach((id) => {
+				if (rule.includes(id)) {
+					if (eval(rule)) {
+						// this will allow us to indirectly disable the other options
+						rightIds.push(id)
+					} else {
+						idsToCancel.push(id)
+					}
 				}
-			}
+			})
 		})
-	})
+		// return [rightIds, idsToCancel]
+		return rightIds
+	}
+
+	const rightIdsForVariant = testingThroughRules(
+		concernedRules,
+		restOptions,
+		elementsToCancel
+	)
 
 	// 5 we target the array of components if rightIdsForVariant isn't empty
-	let theOne = []
-	let isUnique
-	if (rightIdsForVariant.length) {
-		separated.forEach((sep) => {
-			const yesOrNo = sep.some((el) => rightIdsForVariant.includes(el))
-			if (yesOrNo) {
-				theOne = sep
+	function getConcernedVariantsIds(rightIds, separated) {
+		let theOne = []
+		let isUnique
+		if (rightIds.length) {
+			separated.forEach((sep) => {
+				const yesOrNo = sep.some((el) => rightIds.includes(el))
+				if (yesOrNo) {
+					theOne = sep
+				}
+			})
+			if (rightIds.length === 1) {
+				isUnique = rightIds[0]
 			}
-		})
-		if (rightIdsForVariant.length === 1) {
-			isUnique = rightIdsForVariant[0]
 		}
+
+		return [theOne, isUnique]
 	}
-	// then we filter that array to get only the ones that are not already in rightIdsForVariant
-	const indirectlyWrong = theOne.filter(
-		(obj) => rightIdsForVariant.indexOf(obj) == -1
+
+	const [theOne, isUnique] = getConcernedVariantsIds(
+		rightIdsForVariant,
+		separated
 	)
-	console.log(isUnique)
+
+	// then we filter that array to get only the ones that are not already in rightIdsForVariant
+	function getUniqueIds(array1, array2) {
+		return array1.filter((obj) => array2.indexOf(obj) == -1)
+	}
+
+	const indirectlyWrong = getUniqueIds(theOne, rightIdsForVariant)
 
 	// 6 we need to check if it's the last one
 	// is it an option or variant ?

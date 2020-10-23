@@ -114,6 +114,10 @@
 		text-decoration: line-through;
 	}
 
+	h2 {
+		text-align: center;
+	}
+
 	input[type='checkbox'][disabled] {
 		border: aqua;
 	}
