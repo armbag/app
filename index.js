@@ -9,7 +9,6 @@ function readFile(path) {
 	const optionsJson = JSON.parse(raw)
 	return optionsJson
 }
-
 function transformToJs(rules) {
 	let newStatement
 	newStatement = rules.replace(/NOT/g, '!')
@@ -43,7 +42,7 @@ function getAvailableOptions() {
 	const notSeparated = optionsSeparated.flat()
 	return [optionsSeparated, notSeparated]
 }
-function getAllRules() {
+function getAllRulesAndOptionals() {
 	const rawRules = fs.readFileSync('sampleBOM.json')
 	const sampleBOM = JSON.parse(rawRules)
 
@@ -150,7 +149,7 @@ app.use('/getOptions', (req, res) => {
 app.post('/GetConfiguredBOM', (req, res) => {
 	const ids = req.body
 	const [separated, notSeparated] = getAvailableOptions()
-	const [allRules, optionalIds] = getAllRules()
+	const [allRules, optionalIds] = getAllRulesAndOptionals()
 
 	// 1 Getting rid of the other variants
 	const elementsToCancel = getRidOfOtherVariants(ids, separated)

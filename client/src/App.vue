@@ -44,7 +44,7 @@
 			const checkedItems = ref([])
 			const idsToDesactivate = ref([])
 			const lastId = ref([])
-
+			console.log(lastId.value)
 			async function fetchOptions() {
 				const endpoint = 'http://localhost:3000/getOptions'
 				options.value = await fetch(endpoint, {
@@ -59,11 +59,20 @@
 			})
 
 			async function sendInputs(id) {
+				// to avoid sending several times the same ids
 				if (!checkedItems.value.includes(id)) {
 					checkedItems.value.push(id)
 				} else {
 					checkedItems.value = checkedItems.value.filter((i) => i !== id)
 				}
+				// to avoid sending sending the lastId (which will automatically be checked if it's truthy)
+				// for some reason, not working if put inside else statement above
+				if (lastId.value) {
+					checkedItems.value = checkedItems.value.filter(
+						(i) => i !== lastId.value
+					)
+				}
+
 				const endpoint2 = 'http://localhost:3000/getConfiguredBOM'
 				fetch(endpoint2, {
 					method: 'POST',
@@ -79,6 +88,7 @@
 					})
 			}
 
+			console.log('APRES ', lastId.value)
 			const checkIfDisable = (id) => idsToDesactivate.value.includes(id)
 
 			return {
