@@ -84,11 +84,10 @@
 					.then((raw) => raw.json())
 					.then((data) => {
 						idsToDesactivate.value = data.toCancelIds
-						lastId.value = data.lastId
+						lastId.value = data.lastIdd
 					})
 			}
 
-			console.log('APRES ', lastId.value)
 			const checkIfDisable = (id) => idsToDesactivate.value.includes(id)
 
 			return {
